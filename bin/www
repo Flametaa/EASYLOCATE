@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+var mongoose = require('mongoose')
+var app = require('../app');
+var debug = require('debug')('pist:server');
+var http = require('http');
+var WebSocket = require('ws');
+
+var History = require('../models/history.model')
+
+var path = require('path');
+var fs = require('fs');
+var fr = require('face-recognition');
+/**
+ * Get port from environment and store in Express.
+ */
+
+const options ={
+     key : fs.readFileSync('./ssl/test-key.pem'),
+     cert: fs.readFileSync( './ssl/test-cert.pem' )
+}
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+//Websockets
+
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+    var dataPath = path.resolve('./public/images/');
+    const recognizer = fr.FaceRecognizer()
+    const modelState = require('../model.json')
+    recognizer.load(modelState)
+    ws.on('message', (message) => {
+       // if (message[message.length()-1]!=='}') message = message + "\"}"
+
+
+        var place = JSON.parse(message).place;
+        var encryption = JSON.parse(message).image;
+        console.log(message)
+
+        var buf = Buffer.from(encryption,'base64');
+
+
+        var name= new mongoose.Types.ObjectId();
+
+
+        fs.writeFile(path.join(dataPath, name+".jpg"), buf, function(error) {
+            if (error) {
+                console.log(error.message);
+            } else {
+
+
+                const testDataByClass = Array(fr.loadImage(path.join(dataPath, name+".jpg")));
+
+                testDataByClass.forEach((face, label) => {
+
+
+
+                    const prediction = recognizer.predictBest(face)
+                    const distance = prediction.distance;
+
+                    if (distance<0.6){
+
+
+                        var history = new History({
+                            _id: new mongoose.Types.ObjectId(),
+
+                            id: prediction.className,
+                            place: place
+                        });
+                        history.save().then(function (result){
+                            console.log(
+                                "History Created\n" +
+                                "Person : "+prediction.className+
+
+                                "  distance : " +prediction.distance
+                            );
+
+                        }).catch(function (err){
+                            console.log(
+                                err.message
+                            )
+                        } );
+
+
+
+                    }
+
+                    else console.log("Unknown\n"+
+                        "distance: " +prediction.distance);
+
+                });
+
+                fs.unlink(dataPath+"\\"+name+".jpg", function (err) {
+                    if (err) throw err;
+
+                });
+
+            }
+        });
+
+
+    })
+
+});
+
+
+
+
+
+
+
+
+

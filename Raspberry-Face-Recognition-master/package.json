@@ -1,0 +1,14 @@
+{
+  "name": "raspberry-face-recognition-master",
+  "version": "1.0.0",
+  "description": "Use Python and Open CV to recognize multi face and show the name #Sample to get video from PiCam # import the necessary packages from picamera.array import PiRGBArray from picamera import PiCamera import time import cv2",
+  "main": "serve.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^7.0.0"
+  }
+}
