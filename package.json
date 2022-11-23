@@ -27,7 +27,7 @@
     "nodemon": "^1.18.10",
     "opencv4nodejs": "^4.15.0",
     "pug": "2.0.0-beta11",
-    "socket.io": "^2.2.0",
+    "socket.io": "^2.5.0",
     "ws": "^7.0.0",
     "wss": "^3.3.4"
   }
